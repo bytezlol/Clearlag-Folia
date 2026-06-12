@@ -1,6 +1,7 @@
 package me.minebuilders.clearlag.tasks;
 
 import me.minebuilders.clearlag.Util;
+import me.minebuilders.clearlag.adapters.VersionAdapter;
 import me.minebuilders.clearlag.annotations.AutoWire;
 import me.minebuilders.clearlag.annotations.ConfigModule;
 import me.minebuilders.clearlag.annotations.ConfigPath;
@@ -14,6 +15,7 @@ import me.minebuilders.clearlag.ClearLag;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,6 +41,12 @@ public class ClearTask extends TaskModule {
     @ConfigValue(valueType = ConfigValueType.PRIMITIVE)
     private boolean broadcastRemoval;
 
+    @ConfigValue(valueType = ConfigValueType.PRIMITIVE)
+    private boolean actionbar;
+
+    @AutoWire
+    private VersionAdapter versionAdapter;
+
     @AutoWire
     private EntityManager entityManager;
 
@@ -49,17 +57,24 @@ public class ClearTask extends TaskModule {
 
     public void run() {
 
-        final String[] broadcastWarning = warnings != null ? warnings.get(++interval) : null;
+        ++interval;
+
+        final String[] broadcastWarning = warnings != null ? warnings.get(interval) : null;
 
         if (broadcastWarning != null) {
-            broadcastHandler.broadcast(Util.cloneAndReplaceStringArr(broadcastWarning, "+remaining", "" + (autoremovalInterval - interval)));
+            final String[] formatted = Util.cloneAndReplaceStringArr(broadcastWarning, "+remaining", "" + (autoremovalInterval - interval));
+            broadcastHandler.broadcast(formatted);
+
+            if (actionbar) {
+                sendActionBar(formatted);
+            }
         }
 
         if (interval >= autoremovalInterval) {
             final List<World> worlds = Bukkit.getWorlds();
             if (worlds.isEmpty()) {
                 if (broadcastRemoval) {
-                    broadcastHandler.broadcast(Util.cloneAndReplaceStringArr(broadcastMessage, "+RemoveAmount", "0"));
+                    broadcastRemovalMessage(0);
                 }
 
                 interval = 0;
@@ -75,7 +90,7 @@ public class ClearTask extends TaskModule {
                 if (snapshot.length == 0) {
                     if (totalPendingWorlds.decrementAndGet() == 0) {
                         if (broadcastRemoval) {
-                            broadcastHandler.broadcast(Util.cloneAndReplaceStringArr(broadcastMessage, "+RemoveAmount", String.valueOf(totalRemoved.get())));
+                            broadcastRemovalMessage(totalRemoved.get());
                         }
                     }
                     continue;
@@ -97,7 +112,7 @@ public class ClearTask extends TaskModule {
 
                                 if (totalPendingWorlds.decrementAndGet() == 0) {
                                     if (broadcastRemoval) {
-                                        broadcastHandler.broadcast(Util.cloneAndReplaceStringArr(broadcastMessage, "+RemoveAmount", String.valueOf(totalRemoved.get())));
+                                        broadcastRemovalMessage(totalRemoved.get());
                                     }
                                 }
                             }
@@ -107,6 +122,30 @@ public class ClearTask extends TaskModule {
             }
 
             interval = 0;
+        }
+    }
+
+    private void broadcastRemovalMessage(int removedAmount) {
+        final String[] formatted = Util.cloneAndReplaceStringArr(broadcastMessage, "+RemoveAmount", String.valueOf(removedAmount));
+        broadcastHandler.broadcast(formatted);
+
+        if (actionbar) {
+            sendActionBar(formatted);
+        }
+    }
+
+    private void sendActionBar(String[] lines) {
+        if (versionAdapter == null) {
+            return;
+        }
+
+        for (String line : lines) {
+            final String colored = Util.color(line);
+            Util.postToMainThread(() -> {
+                for (Player p : Bukkit.getOnlinePlayers()) {
+                    versionAdapter.sendActionBar(p, colored);
+                }
+            });
         }
     }
 }

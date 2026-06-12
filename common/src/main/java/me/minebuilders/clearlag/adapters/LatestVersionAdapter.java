@@ -1,8 +1,11 @@
 package me.minebuilders.clearlag.adapters;
 
 import me.minebuilders.clearlag.reflection.ReflectionUtil;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Material;
 import org.bukkit.entity.Item;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.MapMeta;
 import org.bukkit.map.MapView;
@@ -50,5 +53,13 @@ public class LatestVersionAdapter implements VersionAdapter {
     @Override
     public void setItemEntityAge(Item item, int ticks) {
         item.setTicksLived(ticks);
+    }
+
+    @Override
+    public void sendActionBar(Player player, String message) {
+        player.spigot().sendMessage(
+                ChatMessageType.ACTION_BAR,
+                TextComponent.fromLegacyText(message)
+        );
     }
 }

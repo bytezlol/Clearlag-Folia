@@ -1,6 +1,7 @@
 package me.minebuilders.clearlag.adapters;
 
 import org.bukkit.entity.Item;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.map.MapView;
 
@@ -16,4 +17,6 @@ public interface VersionAdapter {
     boolean isMapItemStackEqual(ItemStack itemStack, ItemStack itemStack2);
 
     void setItemEntityAge(Item item, int ticks);
+
+    void sendActionBar(Player player, String message);
 }

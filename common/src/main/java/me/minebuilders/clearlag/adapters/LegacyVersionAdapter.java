@@ -2,8 +2,11 @@ package me.minebuilders.clearlag.adapters;
 
 import me.minebuilders.clearlag.Util;
 import me.minebuilders.clearlag.reflection.ReflectionUtil;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Material;
 import org.bukkit.entity.Item;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.map.MapView;
 
@@ -58,6 +61,40 @@ public class LegacyVersionAdapter implements VersionAdapter {
             mcItemSetAge.set(nmsEntity, age);
         } catch (Throwable e) {
             e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void sendActionBar(Player player, String message) {
+        try {
+            player.spigot().sendMessage(
+                    ChatMessageType.ACTION_BAR,
+                    TextComponent.fromLegacyText(message)
+            );
+            return;
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            final String ver = Util.getRawBukkitVersion();
+            final Class<?> chatBaseComponent = ReflectionUtil.getClass("net.minecraft.server." + ver, "IChatBaseComponent");
+            final Class<?> packetClass = ReflectionUtil.getClass("net.minecraft.server." + ver, "PacketPlayOutChat");
+            final Class<?> chatSerializer = chatBaseComponent.getDeclaredClasses()[0];
+
+            final String json = "{\"text\":\"" + message.replace("\\", "\\\\").replace("\"", "\\\"") + "\"}";
+            final Object component = chatSerializer.getMethod("a", String.class).invoke(null, json);
+
+            final Object packet = packetClass
+                    .getConstructor(chatBaseComponent, byte.class)
+                    .newInstance(component, (byte) 2);
+
+            final Object handle = player.getClass().getMethod("getHandle").invoke(player);
+            final Object connection = handle.getClass().getField("playerConnection").get(handle);
+            connection.getClass()
+                    .getMethod("sendPacket", ReflectionUtil.getClass("net.minecraft.server." + ver, "Packet"))
+                    .invoke(connection, packet);
+        } catch (Throwable e) {
+            player.sendMessage(message);
         }
     }
 }
