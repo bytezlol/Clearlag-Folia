@@ -7,6 +7,7 @@ import me.minebuilders.clearlag.annotations.ConfigModule;
 import me.minebuilders.clearlag.annotations.ConfigPath;
 import me.minebuilders.clearlag.annotations.ConfigValue;
 import me.minebuilders.clearlag.config.ConfigValueType;
+import me.minebuilders.clearlag.config.configvalues.Warning;
 import me.minebuilders.clearlag.managers.EntityManager;
 import me.minebuilders.clearlag.modules.BroadcastHandler;
 import me.minebuilders.clearlag.modules.TaskModule;
@@ -36,10 +37,13 @@ public class ClearTask extends TaskModule {
     private String[] broadcastMessage;
 
     @ConfigValue(valueType = ConfigValueType.WARN_ARRAY)
-    private HashMap<Integer, String[]> warnings;
+    private HashMap<Integer, Warning> warnings;
 
     @ConfigValue(valueType = ConfigValueType.PRIMITIVE)
     private boolean broadcastRemoval;
+
+    @ConfigValue(valueType = ConfigValueType.PRIMITIVE)
+    private String broadcastSound;
 
     @ConfigValue(valueType = ConfigValueType.PRIMITIVE)
     private boolean actionbar;
@@ -59,14 +63,18 @@ public class ClearTask extends TaskModule {
 
         ++interval;
 
-        final String[] broadcastWarning = warnings != null ? warnings.get(interval) : null;
+        final Warning warning = warnings != null ? warnings.get(interval) : null;
 
-        if (broadcastWarning != null) {
-            final String[] formatted = Util.cloneAndReplaceStringArr(broadcastWarning, "+remaining", "" + (autoremovalInterval - interval));
+        if (warning != null) {
+            final String[] formatted = Util.cloneAndReplaceStringArr(warning.getMessages(), "+remaining", "" + (autoremovalInterval - interval));
             broadcastHandler.broadcast(formatted);
 
             if (actionbar) {
                 sendActionBar(formatted);
+            }
+
+            if (warning.hasSound()) {
+                playSound(warning.getSound());
             }
         }
 
@@ -132,6 +140,14 @@ public class ClearTask extends TaskModule {
         if (actionbar) {
             sendActionBar(formatted);
         }
+
+        if (broadcastSound != null && !broadcastSound.isEmpty()) {
+            try {
+                playSound(org.bukkit.Sound.valueOf(broadcastSound.toUpperCase()));
+            } catch (IllegalArgumentException ex) {
+                Util.warning("Invalid broadcast-sound '" + broadcastSound + "' - use a valid Sound name for your version.");
+            }
+        }
     }
 
     private void sendActionBar(String[] lines) {
@@ -147,5 +163,13 @@ public class ClearTask extends TaskModule {
                 }
             });
         }
+    }
+
+    private void playSound(org.bukkit.Sound sound) {
+        Util.postToMainThread(() -> {
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                p.playSound(p.getLocation(), sound, 1.0f, 1.0f);
+            }
+        });
     }
 }
