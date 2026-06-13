@@ -8,12 +8,15 @@ import me.minebuilders.clearlag.modules.CommandModule;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
-public class CommandListener implements CommandExecutor {
+public class CommandListener implements CommandExecutor, TabCompleter {
 
     @LanguageValue(key = "command.lagg.")
     private MessageTree lang;
@@ -21,7 +24,7 @@ public class CommandListener implements CommandExecutor {
     private final List<CommandModule> cmds = new ArrayList<>();
 
     public CommandListener() {
-        ClearLag.getInstance().getCommand("lagg").setExecutor(this);
+        Objects.requireNonNull(ClearLag.getInstance().getCommand("lagg")).setExecutor(this);
     }
 
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
@@ -55,6 +58,21 @@ public class CommandListener implements CommandExecutor {
         }
 
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (args.length != 1) {
+            return Collections.emptyList();
+        }
+
+        final String partial = args[0].toLowerCase();
+
+        return getUserCmds(sender).stream()
+                .map(CommandModule::getDisplayName)
+                .filter(name -> name.startsWith(partial))
+                .sorted()
+                .toList();
     }
 
     public void addCmd(CommandModule cmd) {

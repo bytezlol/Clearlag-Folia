@@ -8,6 +8,8 @@ folia-supported: true
 commands:
   lagg:
     description: Clearlag base command!
+    aliases:
+      - clearlag
 permissions:
   lagg.clear:
     description: Permission to clear lag
